@@ -1,20 +1,41 @@
 import { StatusBar } from 'expo-status-bar';
-import { StyleSheet, Text, View } from 'react-native';
+import { NavigationContainer } from '@react-navigation/native';
+import { createNativeStackNavigator } from '@react-navigation/native-stack';
+import JournalListScreen from './screens/JournalListScreen';
+import EntryScreen from './screens/EntryScreen';
+import SettingsScreen from './screens/SettingsScreen';
+import { TouchableOpacity, Text } from 'react-native';
+import ThemeProvider, { useAppTheme } from './theme/ThemeProvider';
 
-export default function App() {
+const Stack = createNativeStackNavigator();
+
+function RootNavigator() {
+  const { navTheme } = useAppTheme();
   return (
-    <View style={styles.container}>
-      <Text>Open up App.js to start working on your app!</Text>
-      <StatusBar style="auto" />
-    </View>
+    <NavigationContainer theme={navTheme}>
+      <Stack.Navigator>
+        <Stack.Screen
+          name="Journal"
+          component={JournalListScreen}
+          options={({ navigation }) => ({
+            headerRight: () => (
+              <TouchableOpacity onPress={() => navigation.navigate('Settings')}>
+                <Text style={{ color: '#2563eb' }}>Settings</Text>
+              </TouchableOpacity>
+            ),
+          })}
+        />
+        <Stack.Screen name="Entry" component={EntryScreen} />
+        <Stack.Screen name="Settings" component={SettingsScreen} />
+      </Stack.Navigator>
+    </NavigationContainer>
   );
 }
 
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#fff',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-});
+export default function App() {
+  return (
+    <ThemeProvider>
+      <RootNavigator />
+    </ThemeProvider>
+  );
+}
