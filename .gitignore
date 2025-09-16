@@ -37,4 +37,4 @@ yarn-error.*
 *.tsbuildinf 
 
 # Platform tools
-   platform-tools/
+platform-tools/
