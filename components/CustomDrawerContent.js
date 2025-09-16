@@ -12,6 +12,11 @@ export default function CustomDrawerContent({ navigation }) {
       screen: 'Journal',
     },
     {
+      name: 'Calendar',
+      icon: '📅',
+      screen: 'Calendar',
+    },
+    {
       name: 'Settings',
       icon: '⚙️',
       screen: 'Settings',

@@ -4,6 +4,7 @@ import { createDrawerNavigator } from '@react-navigation/drawer';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import JournalListScreen from './screens/JournalListScreen';
 import EntryScreen from './screens/EntryScreen';
+import CalendarScreen from './screens/CalendarScreen';
 import SettingsScreen from './screens/SettingsScreen';
 import CustomDrawerContent from './components/CustomDrawerContent';
 import ThemeProvider, { useAppTheme } from './theme/ThemeProvider';
@@ -46,6 +47,13 @@ function RootNavigator() {
           component={JournalStack}
           options={{
             drawerIcon: () => '📖',
+          }}
+        />
+        <Drawer.Screen 
+          name="Calendar" 
+          component={CalendarScreen}
+          options={{
+            drawerIcon: () => '📅',
           }}
         />
         <Drawer.Screen 

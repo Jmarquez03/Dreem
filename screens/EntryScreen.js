@@ -1,5 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { View, Text, TextInput, StyleSheet, TouchableOpacity, Alert, ScrollView, Modal } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { useAppTheme } from '../theme/ThemeProvider';
 import { useRoute, useNavigation } from '@react-navigation/native';
 import { format } from 'date-fns';
@@ -14,7 +15,11 @@ export default function EntryScreen() {
   const navigation = useNavigation();
   const [text, setText] = useState('');
   const dateKey = route.params?.dateKey || toDateKey(new Date());
-  const dateObj = useMemo(() => new Date(dateKey), [dateKey]);
+  const dateObj = useMemo(() => {
+    // Parse dateKey properly to avoid timezone issues
+    const [year, month, day] = dateKey.split('-').map(Number);
+    return new Date(year, month - 1, day); // month is 0-indexed
+  }, [dateKey]);
   const moon = useMemo(() => getMoonPhaseForDate(dateObj), [dateObj]);
   const [loadingAi, setLoadingAi] = useState(false);
   const [aiVisible, setAiVisible] = useState(false);
@@ -68,7 +73,7 @@ export default function EntryScreen() {
   };
 
   return (
-    <View style={[styles.container, { backgroundColor: colors.background }]}>
+    <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]}>
       {/* Header with Journal Icon */}
       <View style={[styles.topHeader, { borderBottomColor: colors.border }]}>
         <TouchableOpacity
@@ -144,7 +149,7 @@ export default function EntryScreen() {
           </View>
         </View>
       </Modal>
-    </View>
+    </SafeAreaView>
   );
 }
 

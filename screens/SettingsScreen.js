@@ -1,12 +1,15 @@
 import React, { useEffect, useState } from 'react';
 import { View, Text, TextInput, StyleSheet, TouchableOpacity, Alert } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { useAppTheme } from '../theme/ThemeProvider';
+import { useNavigation } from '@react-navigation/native';
 import { verifyApiKey } from '../utils/ai';
 import { getApiKey as getStoredApiKey, setApiKey as setStoredApiKey } from '../utils/storage';
 
 export default function SettingsScreen() {
   const [apiKey, setApiKeyInput] = useState('');
   const { themePreference, setThemePreference, colors } = useAppTheme();
+  const navigation = useNavigation();
 
   useEffect(() => {
     (async () => {
@@ -31,8 +34,21 @@ export default function SettingsScreen() {
   };
 
   return (
-    <View style={[styles.container, { backgroundColor: colors.background }]}>
-      <Text style={[styles.sectionTitle, { color: colors.text }]}>Appearance</Text>
+    <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]}>
+      {/* Header with Settings Icon */}
+      <View style={[styles.header, { borderBottomColor: colors.border }]}>
+        <TouchableOpacity
+          style={styles.menuButton}
+          onPress={() => navigation.openDrawer()}
+        >
+          <Text style={styles.menuIcon}>⚙️</Text>
+        </TouchableOpacity>
+        <Text style={[styles.headerTitle, { color: colors.text }]}>Settings</Text>
+        <View style={styles.headerSpacer} />
+      </View>
+
+      <View style={styles.content}>
+        <Text style={[styles.sectionTitle, { color: colors.text }]}>Appearance</Text>
       <View style={styles.row}>
         <TouchableOpacity
           style={[styles.toggle, { borderColor: colors.border }, themePreference === 'system' && [styles.toggleActive, { backgroundColor: colors.card }]]}
@@ -75,12 +91,38 @@ export default function SettingsScreen() {
         </TouchableOpacity>
       </View>
       <Text style={[styles.help, { color: colors.mutedText }]}>Your key is stored securely on this device.</Text>
-    </View>
+      </View>
+    </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, padding: 16 },
+  container: { flex: 1 },
+  header: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    borderBottomWidth: 1,
+  },
+  menuButton: {
+    padding: 8,
+  },
+  menuIcon: {
+    fontSize: 24,
+  },
+  headerTitle: {
+    fontSize: 20,
+    fontWeight: 'bold',
+    marginLeft: 12,
+  },
+  headerSpacer: {
+    flex: 1,
+  },
+  content: { 
+    flex: 1, 
+    padding: 16 
+  },
   sectionTitle: { fontWeight: '700', marginBottom: 8 },
   row: { flexDirection: 'row', gap: 8, marginBottom: 12 },
   toggle: { paddingVertical: 8, paddingHorizontal: 12, borderRadius: 8, borderWidth: 1 },

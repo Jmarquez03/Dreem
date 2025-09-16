@@ -1,5 +1,6 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import { View, Text, FlatList, TouchableOpacity, StyleSheet } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { useAppTheme } from '../theme/ThemeProvider';
 import { useFocusEffect, useNavigation } from '@react-navigation/native';
 import { format, parseISO } from 'date-fns';
@@ -34,7 +35,7 @@ export default function JournalListScreen() {
   );
 
   return (
-    <View style={[styles.container, { backgroundColor: colors.background }]}>
+    <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]}>
       {/* Header with Journal Icon */}
       <View style={[styles.header, { borderBottomColor: colors.border }]}>
         <TouchableOpacity
@@ -61,14 +62,22 @@ export default function JournalListScreen() {
             style={[styles.card, { backgroundColor: colors.card }]}
             onPress={() => navigation.navigate('Entry', { dateKey: item.dateKey })}
           >
-            <Text style={[styles.date, { color: colors.text }]}>{format(new Date(item.dateIso || item.dateKey), 'PPP')}</Text>
+            <Text style={[styles.date, { color: colors.text }]}>
+              {item.dateIso 
+                ? format(new Date(item.dateIso), 'PPP')
+                : (() => {
+                    const [year, month, day] = item.dateKey.split('-').map(Number);
+                    return format(new Date(year, month - 1, day), 'PPP');
+                  })()
+              }
+            </Text>
             <Text style={[styles.moon, { color: colors.mutedText }]}>{item.moonPhaseEmoji} {item.moonPhase}</Text>
             <Text style={[styles.preview, { color: colors.text }]} numberOfLines={2}>{item.text || 'No content yet'}</Text>
           </TouchableOpacity>
         )}
         contentContainerStyle={styles.list}
       />
-    </View>
+    </SafeAreaView>
   );
 }
 
