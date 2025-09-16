@@ -35,6 +35,18 @@ export default function JournalListScreen() {
 
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>
+      {/* Header with Journal Icon */}
+      <View style={[styles.header, { borderBottomColor: colors.border }]}>
+        <TouchableOpacity
+          style={styles.menuButton}
+          onPress={() => navigation.openDrawer()}
+        >
+          <Text style={styles.menuIcon}>📖</Text>
+        </TouchableOpacity>
+        <Text style={[styles.headerTitle, { color: colors.text }]}>Journal</Text>
+        <View style={styles.headerSpacer} />
+      </View>
+
       <TouchableOpacity
         style={[styles.newButton, { backgroundColor: colors.purple }]}
         onPress={() => navigation.navigate('Entry', { dateKey: toDateKey(new Date()) })}
@@ -62,6 +74,27 @@ export default function JournalListScreen() {
 
 const styles = StyleSheet.create({
   container: { flex: 1 },
+  header: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    borderBottomWidth: 1,
+  },
+  menuButton: {
+    padding: 8,
+  },
+  menuIcon: {
+    fontSize: 24,
+  },
+  headerTitle: {
+    fontSize: 20,
+    fontWeight: 'bold',
+    marginLeft: 12,
+  },
+  headerSpacer: {
+    flex: 1,
+  },
   list: { padding: 16 },
   newButton: { padding: 12, margin: 16, borderRadius: 8, alignItems: 'center' },
   newButtonText: { color: 'white', fontWeight: '600' },
