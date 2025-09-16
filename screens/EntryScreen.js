@@ -1,7 +1,8 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { View, Text, TextInput, StyleSheet, TouchableOpacity, Alert, ScrollView, Modal } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { useAppTheme } from '../theme/ThemeProvider';
-import { useRoute } from '@react-navigation/native';
+import { useRoute, useNavigation } from '@react-navigation/native';
 import { format } from 'date-fns';
 import { getMoonPhaseForDate } from '../utils/moon';
 import { loadEntry, removeEntry, saveEntry } from '../storage/journalStorage';
@@ -11,9 +12,14 @@ import { toDateKey } from '../utils/date';
 export default function EntryScreen() {
   const { colors } = useAppTheme();
   const route = useRoute();
+  const navigation = useNavigation();
   const [text, setText] = useState('');
   const dateKey = route.params?.dateKey || toDateKey(new Date());
-  const dateObj = useMemo(() => new Date(dateKey), [dateKey]);
+  const dateObj = useMemo(() => {
+    // Parse dateKey properly to avoid timezone issues
+    const [year, month, day] = dateKey.split('-').map(Number);
+    return new Date(year, month - 1, day); // month is 0-indexed
+  }, [dateKey]);
   const moon = useMemo(() => getMoonPhaseForDate(dateObj), [dateObj]);
   const [loadingAi, setLoadingAi] = useState(false);
   const [aiVisible, setAiVisible] = useState(false);
@@ -67,10 +73,20 @@ export default function EntryScreen() {
   };
 
   return (
-    <View style={[styles.container, { backgroundColor: colors.background }]}>
-      <View style={[styles.header, { borderColor: colors.border }]}>
-        <Text style={[styles.title, { color: colors.text }]}>{format(dateObj, 'PPP')}</Text>
-        <Text style={[styles.moon, { color: colors.mutedText }]}>{moon.emoji} {moon.phase}</Text>
+    <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]}>
+      {/* Header with Journal Icon */}
+      <View style={[styles.topHeader, { borderBottomColor: colors.border }]}>
+        <TouchableOpacity
+          style={styles.menuButton}
+          onPress={() => navigation.openDrawer()}
+        >
+          <Text style={styles.menuIcon}>📖</Text>
+        </TouchableOpacity>
+        <View style={styles.headerContent}>
+          <Text style={[styles.title, { color: colors.text }]}>{format(dateObj, 'PPP')}</Text>
+          <Text style={[styles.moon, { color: colors.mutedText }]}>{moon.emoji} {moon.phase}</Text>
+        </View>
+        <View style={styles.headerSpacer} />
       </View>
       <View style={[styles.tabs, { borderColor: colors.border }]}> 
         <TouchableOpacity
@@ -133,13 +149,32 @@ export default function EntryScreen() {
           </View>
         </View>
       </Modal>
-    </View>
+    </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
   container: { flex: 1 },
-  header: { padding: 16, borderBottomWidth: StyleSheet.hairlineWidth },
+  topHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+  },
+  menuButton: {
+    padding: 8,
+  },
+  menuIcon: {
+    fontSize: 24,
+  },
+  headerContent: {
+    flex: 1,
+    marginLeft: 12,
+  },
+  headerSpacer: {
+    width: 40, // Same width as menu button for balance
+  },
   title: { fontSize: 18, fontWeight: '700', marginBottom: 4 },
   moon: { opacity: 0.8 },
   scroll: { padding: 16 },
