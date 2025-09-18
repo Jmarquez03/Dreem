@@ -1,18 +1,20 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState, useRef } from 'react';
 import { View, Text, TextInput, StyleSheet, TouchableOpacity, Alert, ScrollView, Modal } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useAppTheme } from '../theme/ThemeProvider';
-import { useRoute, useNavigation } from '@react-navigation/native';
+import { useRoute, useNavigation, useFocusEffect, useIsFocused } from '@react-navigation/native';
 import { format } from 'date-fns';
 import { getMoonPhaseForDate } from '../utils/moon';
-import { loadEntry, removeEntry, saveEntry } from '../storage/journalStorage';
+import { loadEntry, removeEntry, saveEntry, loadDraft, saveDraft, removeDraft } from '../storage/journalStorage';
 import { getAiInterpretation } from '../utils/ai';
 import { toDateKey } from '../utils/date';
+import { useEntryContext } from '../contexts/EntryContext';
 
 export default function EntryScreen() {
   const { colors } = useAppTheme();
   const route = useRoute();
   const navigation = useNavigation();
+  const { updateEntryState, clearEntryState } = useEntryContext();
   const [text, setText] = useState('');
   const dateKey = route.params?.dateKey || toDateKey(new Date());
   const dateObj = useMemo(() => {
@@ -25,28 +27,134 @@ export default function EntryScreen() {
   const [aiVisible, setAiVisible] = useState(false);
   const [aiResult, setAiResult] = useState('');
   const [activeTab, setActiveTab] = useState('entry'); // 'entry' | 'luna'
+  const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
+  const [originalText, setOriginalText] = useState('');
+  const [originalAiResult, setOriginalAiResult] = useState('');
+  const [isFocused, setIsFocused] = useState(true);
+  const isScreenFocused = useIsFocused();
+  const updateEntryStateRef = useRef(updateEntryState);
 
   useEffect(() => {
     (async () => {
       const existing = await loadEntry(dateKey);
+      const draft = await loadDraft(dateKey);
+      
       if (existing) {
         setText(existing.text || '');
         setAiResult(existing.aiAnalysis || '');
+        setOriginalText(existing.text || '');
+        setOriginalAiResult(existing.aiAnalysis || '');
+      } else if (draft) {
+        // Load draft if no saved entry exists
+        setText(draft.text || '');
+        setAiResult(draft.aiResult || '');
+        setOriginalText(draft.text || '');
+        setOriginalAiResult(draft.aiResult || '');
       } else {
+        setText('');
         setAiResult('');
+        setOriginalText('');
+        setOriginalAiResult('');
       }
       setActiveTab('entry');
+      setHasUnsavedChanges(false);
     })();
   }, [dateKey]);
 
+  // Handle navigation back with unsaved changes
+  useFocusEffect(
+    React.useCallback(() => {
+      const unsubscribe = navigation.addListener('beforeRemove', (e) => {
+        if (!hasUnsavedChanges || (!text.trim() && !aiResult.trim())) {
+          return;
+        }
+
+        // Check if navigating to a different drawer screen (not going back to JournalList)
+        const targetRoute = e.data.action?.payload?.name;
+        const isNavigatingToOtherDrawerScreen = targetRoute && 
+          (targetRoute === 'Calendar' || targetRoute === 'Settings');
+
+        // Prevent default behavior of leaving the screen
+        e.preventDefault();
+
+        // Show confirmation dialog with different messages based on navigation type
+        const isGoingBack = !isNavigatingToOtherDrawerScreen;
+        const message = isGoingBack 
+          ? 'You have unsaved changes. Would you like to save as a draft?'
+          : 'You are currently editing an entry. Would you like to save as a draft before switching screens?';
+
+        Alert.alert(
+          'Save as Draft?',
+          message,
+          [
+            { text: 'Discard', style: 'destructive', onPress: () => navigation.dispatch(e.data.action) },
+            { text: 'Cancel', style: 'cancel' },
+            { 
+              text: 'Save Draft', 
+              onPress: async () => {
+                await saveDraft(dateKey, text, aiResult);
+                navigation.dispatch(e.data.action);
+              }
+            }
+          ]
+        );
+      });
+
+      return unsubscribe;
+    }, [hasUnsavedChanges, text, aiResult, dateKey, navigation])
+  );
+
+  // Track changes to detect unsaved changes
+  useEffect(() => {
+    const hasChanges = text !== originalText || aiResult !== originalAiResult;
+    setHasUnsavedChanges(hasChanges);
+  }, [text, aiResult, originalText, originalAiResult]);
+
+  // Update ref when updateEntryState changes
+  useEffect(() => {
+    updateEntryStateRef.current = updateEntryState;
+  }, [updateEntryState]);
+
+  // Update context when changes occur (separate effect to avoid infinite loop)
+  useEffect(() => {
+    const hasChanges = text !== originalText || aiResult !== originalAiResult;
+    updateEntryStateRef.current(hasChanges, {
+      dateKey,
+      text,
+      aiResult,
+      hasUnsavedChanges: hasChanges
+    });
+  }, [text, aiResult, dateKey]);
+
+  // Track focus state
+  useEffect(() => {
+    setIsFocused(isScreenFocused);
+  }, [isScreenFocused]);
+
+  // Cleanup context when component unmounts
+  useEffect(() => {
+    return () => {
+      clearEntryState();
+    };
+  }, [clearEntryState]);
+
   const onSave = async () => {
     await saveEntry({ dateKey, dateIso: new Date(dateKey).toISOString(), text, moonPhase: moon.phase, moonPhaseEmoji: moon.emoji, aiAnalysis: aiResult });
+    // Remove draft when saving as final entry
+    await removeDraft(dateKey);
+    setOriginalText(text);
+    setOriginalAiResult(aiResult);
+    setHasUnsavedChanges(false);
+    clearEntryState();
     Alert.alert('Saved');
   };
 
   const onDelete = async () => {
     await removeEntry(dateKey);
+    await removeDraft(dateKey); // Also remove any draft
+    clearEntryState();
     Alert.alert('Deleted');
+    navigation.navigate('JournalList');
   };
 
   const onAskAi = async () => {
@@ -64,6 +172,8 @@ export default function EntryScreen() {
       setAiResult(answer);
       setAiVisible(true);
       await saveEntry({ dateKey, aiAnalysis: answer });
+      setOriginalAiResult(answer);
+      setHasUnsavedChanges(text !== originalText || answer !== originalAiResult);
       setActiveTab('luna');
     } catch (e) {
       Alert.alert('AI Error', e?.message || 'Failed to get interpretation');

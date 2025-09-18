@@ -8,6 +8,7 @@ import CalendarScreen from './screens/CalendarScreen';
 import SettingsScreen from './screens/SettingsScreen';
 import CustomDrawerContent from './components/CustomDrawerContent';
 import ThemeProvider, { useAppTheme } from './theme/ThemeProvider';
+import { EntryProvider } from './contexts/EntryContext';
 
 const Drawer = createDrawerNavigator();
 const Stack = createNativeStackNavigator();
@@ -71,7 +72,9 @@ function RootNavigator() {
 export default function App() {
   return (
     <ThemeProvider>
-      <RootNavigator />
+      <EntryProvider>
+        <RootNavigator />
+      </EntryProvider>
     </ThemeProvider>
   );
 }

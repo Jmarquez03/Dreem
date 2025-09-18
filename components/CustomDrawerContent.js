@@ -1,9 +1,44 @@
 import React from 'react';
-import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
+import { View, Text, TouchableOpacity, StyleSheet, Alert } from 'react-native';
 import { useAppTheme } from '../theme/ThemeProvider';
+import { useEntryContext } from '../contexts/EntryContext';
+import { saveDraft } from '../storage/journalStorage';
 
 export default function CustomDrawerContent({ navigation }) {
   const { colors } = useAppTheme();
+  const { hasUnsavedChanges, currentEntryData, clearEntryState } = useEntryContext();
+
+  const handleNavigation = async (screenName) => {
+    if (screenName === 'Journal') {
+      // Always go to JournalList when clicking Journal
+      navigation.navigate('Journal', { screen: 'JournalList' });
+    } else {
+      // For other screens, check if there are unsaved changes in EntryScreen
+      if (hasUnsavedChanges && currentEntryData && (currentEntryData.text?.trim() || currentEntryData.aiResult?.trim())) {
+        Alert.alert(
+          'Save as Draft?',
+          'You are currently editing an entry. Would you like to save as a draft before switching screens?',
+          [
+            { text: 'Discard', style: 'destructive', onPress: () => {
+              clearEntryState();
+              navigation.navigate(screenName);
+            }},
+            { text: 'Cancel', style: 'cancel' },
+            { 
+              text: 'Save Draft', 
+              onPress: async () => {
+                await saveDraft(currentEntryData.dateKey, currentEntryData.text, currentEntryData.aiResult);
+                clearEntryState();
+                navigation.navigate(screenName);
+              }
+            }
+          ]
+        );
+      } else {
+        navigation.navigate(screenName);
+      }
+    }
+  };
 
   const menuItems = [
     {
@@ -34,7 +69,7 @@ export default function CustomDrawerContent({ navigation }) {
           <TouchableOpacity
             key={item.screen}
             style={[styles.menuItem, { backgroundColor: colors.card }]}
-            onPress={() => navigation.navigate(item.screen)}
+            onPress={() => handleNavigation(item.screen)}
           >
             <Text style={styles.menuIcon}>{item.icon}</Text>
             <Text style={[styles.menuText, { color: colors.text }]}>{item.name}</Text>
