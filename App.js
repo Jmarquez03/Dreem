@@ -6,6 +6,7 @@ import JournalListScreen from './screens/JournalListScreen';
 import EntryScreen from './screens/EntryScreen';
 import CalendarScreen from './screens/CalendarScreen';
 import SettingsScreen from './screens/SettingsScreen';
+import ChatScreen from './screens/ChatScreen';
 import CustomDrawerContent from './components/CustomDrawerContent';
 import ThemeProvider, { useAppTheme } from './theme/ThemeProvider';
 import { EntryProvider } from './contexts/EntryContext';
@@ -55,6 +56,13 @@ function RootNavigator() {
           component={CalendarScreen}
           options={{
             drawerIcon: () => '📅',
+          }}
+        />
+        <Drawer.Screen 
+          name="Chats" 
+          component={ChatScreen}
+          options={{
+            drawerIcon: () => '💬',
           }}
         />
         <Drawer.Screen 

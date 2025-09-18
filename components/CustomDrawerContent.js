@@ -52,6 +52,11 @@ export default function CustomDrawerContent({ navigation }) {
       screen: 'Calendar',
     },
     {
+      name: 'Chats',
+      icon: '💬',
+      screen: 'Chats',
+    },
+    {
       name: 'Settings',
       icon: '⚙️',
       screen: 'Settings',

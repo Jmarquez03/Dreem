@@ -1,10 +1,10 @@
 import React, { useCallback, useEffect, useState, useRef, useMemo } from 'react';
-import { View, Text, FlatList, TouchableOpacity, StyleSheet, Animated, Dimensions } from 'react-native';
+import { View, Text, FlatList, TouchableOpacity, StyleSheet, Animated, Dimensions, Alert } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useAppTheme } from '../theme/ThemeProvider';
 import { useFocusEffect, useNavigation } from '@react-navigation/native';
 import { format, parseISO } from 'date-fns';
-import { loadAllEntries, getAllDrafts } from '../storage/journalStorage';
+import { loadAllEntries, getAllDrafts, removeEntry, removeDraft } from '../storage/journalStorage';
 import { toDateKey } from '../utils/date';
 
 export default function JournalListScreen() {
@@ -24,6 +24,35 @@ export default function JournalListScreen() {
     const allDrafts = await getAllDrafts();
     setEntries(all.sort((a, b) => new Date(b.dateIso || b.dateKey) - new Date(a.dateIso || a.dateKey)));
     setDrafts(allDrafts);
+  };
+
+  const handleDeleteEntry = async (item) => {
+    const isDraft = item.isDraft;
+    const entryType = isDraft ? 'draft' : 'entry';
+    
+    Alert.alert(
+      `Delete ${isDraft ? 'Draft' : 'Entry'}`,
+      `Are you sure you want to delete this ${entryType}? This action cannot be undone.`,
+      [
+        { text: 'Cancel', style: 'cancel' },
+        { 
+          text: 'Delete', 
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              if (isDraft) {
+                await removeDraft(item.dateKey);
+              } else {
+                await removeEntry(item.dateKey);
+              }
+              refresh(); // Refresh the list after deletion
+            } catch (error) {
+              Alert.alert('Error', 'Failed to delete entry');
+            }
+          }
+        }
+      ]
+    );
   };
 
   const toggleFab = () => {
@@ -90,33 +119,42 @@ export default function JournalListScreen() {
   }, [entries, drafts]);
 
   const renderItem = ({ item }) => (
-    <TouchableOpacity
-      style={[styles.card, { backgroundColor: colors.card }]}
-      onPress={() => navigation.navigate('Entry', { dateKey: item.dateKey })}
-    >
-      <View style={styles.cardHeader}>
-        <Text style={[styles.date, { color: colors.text }]}>
-          {item.dateIso 
-            ? format(new Date(item.dateIso), 'PPP')
-            : (() => {
-                const [year, month, day] = item.dateKey.split('-').map(Number);
-                return format(new Date(year, month - 1, day), 'PPP');
-              })()
-          }
+    <View style={styles.itemContainer}>
+      <TouchableOpacity
+        style={[styles.card, { backgroundColor: colors.card }]}
+        onPress={() => navigation.navigate('Entry', { dateKey: item.dateKey })}
+      >
+        <View style={styles.cardHeader}>
+          <Text style={[styles.date, { color: colors.text }]}>
+            {item.dateIso 
+              ? format(new Date(item.dateIso), 'PPP')
+              : (() => {
+                  const [year, month, day] = item.dateKey.split('-').map(Number);
+                  return format(new Date(year, month - 1, day), 'PPP');
+                })()
+            }
+          </Text>
+          {item.isDraft && (
+            <View style={[styles.draftBadge, { backgroundColor: colors.purple }]}>
+              <Text style={styles.draftText}>Draft</Text>
+            </View>
+          )}
+        </View>
+        <Text style={[styles.moon, { color: colors.mutedText }]}>
+          {item.moonPhaseEmoji} {item.moonPhase || (item.isDraft ? 'Draft' : '')}
         </Text>
-        {item.isDraft && (
-          <View style={[styles.draftBadge, { backgroundColor: colors.purple }]}>
-            <Text style={styles.draftText}>Draft</Text>
-          </View>
-        )}
-      </View>
-      <Text style={[styles.moon, { color: colors.mutedText }]}>
-        {item.moonPhaseEmoji} {item.moonPhase || (item.isDraft ? 'Draft' : '')}
-      </Text>
-      <Text style={[styles.preview, { color: colors.text }]} numberOfLines={2}>
-        {item.text || 'No content yet'}
-      </Text>
-    </TouchableOpacity>
+        <Text style={[styles.preview, { color: colors.text }]} numberOfLines={2}>
+          {item.text || 'No content yet'}
+        </Text>
+      </TouchableOpacity>
+      
+      <TouchableOpacity
+        style={styles.deleteButton}
+        onPress={() => handleDeleteEntry(item)}
+      >
+        <Text style={styles.deleteButtonText}>×</Text>
+      </TouchableOpacity>
+    </View>
   );
 
   return (
@@ -180,8 +218,7 @@ export default function JournalListScreen() {
           <TouchableOpacity
             style={[styles.fabMenuItem, { backgroundColor: colors.primary }]}
             onPress={() => {
-              // TODO: Navigate to Chat screen when implemented
-              console.log('Chat pressed');
+              navigation.navigate('Chats', { openNewChat: true });
               closeFab();
             }}
           >
@@ -239,7 +276,17 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   list: { padding: 16, paddingBottom: 100 }, // Add bottom padding for FAB
-  card: { padding: 12, borderRadius: 8, marginBottom: 12 },
+  itemContainer: {
+    flexDirection: 'row',
+    marginBottom: 12,
+    alignItems: 'center',
+  },
+  card: { 
+    flex: 1,
+    padding: 12, 
+    borderRadius: 8,
+    marginRight: 8,
+  },
   cardHeader: { 
     flexDirection: 'row', 
     justifyContent: 'space-between', 
@@ -259,6 +306,15 @@ const styles = StyleSheet.create({
     color: 'white',
     fontSize: 12,
     fontWeight: '600',
+  },
+  deleteButton: {
+    padding: 8,
+    marginLeft: 8,
+  },
+  deleteButtonText: {
+    fontSize: 20,
+    color: '#ff4444',
+    fontWeight: 'bold',
   },
   
   // FAB Styles
